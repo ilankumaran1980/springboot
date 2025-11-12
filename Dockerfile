@@ -6,4 +6,4 @@ ARG JVM_OPTS
 ENV JVM_OPTS=${JVM_OPTS}
 # Expose port 9090
 EXPOSE 9090
-CMD java ${JVM_OPTS} -jar app.jar
+CMD java ${JVM_OPTS} -jar app.jar --server.port=9090

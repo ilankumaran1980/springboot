@@ -1,20 +1,21 @@
-#!/bin/env groovy
-
 pipeline {
     agent any
-    tools {
-        maven "maven"   // Jenkins Maven tool name
-        jdk "jdk11"     // Jenkins JDK 11 tool name
+
+    environment {
+        // You can explicitly set JAVA_HOME and MAVEN_HOME if needed
+        JAVA_HOME = "/usr/lib/jvm/java-11-openjdk-arm64"
+        PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
+        MAVEN_HOME = "/usr/share/maven"
+        PATH = "${env.MAVEN_HOME}/bin:${env.PATH}"
     }
 
     stages {
 
         stage("Maven Build & Test") {
             steps {
-                script {
-                    sh "mvn -B clean install"
-                    junit "**/target/surefire-reports/*.xml"
-                }
+                echo "Building project with Maven..."
+                sh "mvn -B clean install"
+                junit "**/target/surefire-reports/*.xml"
             }
         }
 
@@ -23,6 +24,7 @@ pipeline {
                 script {
                     pom = readMavenPom file: "pom.xml"
                     TAG = pom.version
+                    echo "Building Docker image with tag: petclinic:${TAG}"
                     sh "docker build -t petclinic:${TAG} ."
                 }
             }
@@ -33,14 +35,23 @@ pipeline {
                 script {
                     pom = readMavenPom file: "pom.xml"
                     TAG = pom.version
+                    echo "Deploying Docker container on port 9090..."
                     sh """
-                        # Stop and remove previous container if exists
                         docker rm -f petclinic || true
-                        # Run new container on port 9090
                         docker run -d --name petclinic -p 9090:8080 petclinic:${TAG}
                     """
                 }
             }
+        }
+
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed."
         }
     }
 }

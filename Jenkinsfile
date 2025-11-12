@@ -9,13 +9,6 @@ pipeline {
     }
 
     stages {
-        stage("Checkout Code") {
-            steps {
-                echo "Checking out code from GitHub"
-                git branch: 'main', url: 'https://github.com/ilankumaran1980/springboot.git'
-            }
-        }
-
         stage("Maven Build & Test") {
             steps {
                 echo "Building the project with Maven..."
@@ -29,23 +22,26 @@ pipeline {
                 script {
                     pom = readMavenPom file: "pom.xml"
                     TAG = pom.version
+                    // Make sure the JAR exists
+                    def jarExists = fileExists "target/*.jar"
+                    if (!jarExists) {
+                        error("Spring Boot JAR not found in target. Build failed or artifact missing.")
+                    }
                     echo "Building Docker image with tag: ${TAG}"
                     sh "docker build -t petclinic:${TAG} ."
                 }
             }
         }
 
-        stage("Deploy Docker Container") {
+        stage("Start Docker Container") {
             steps {
                 script {
                     pom = readMavenPom file: "pom.xml"
                     TAG = pom.version
-                    echo "Deploying Docker container on port 9090"
+                    echo "Starting Docker container on port 9090"
                     sh """
-                        # Stop & remove old container if exists
                         docker rm -f petclinic || true
-                        # Run new container mapping port 9090 to 9090 (make sure Dockerfile exposes 9090)
-                        docker run -d --name petclinic -p 9090:9090 petclinic:${TAG}
+                        docker run -d --name petclinic -p 9090:8080 petclinic:${TAG}
                     """
                 }
             }
@@ -54,7 +50,7 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline completed successfully! Access the app at http://<host-ip>:9090"
+            echo "Pipeline completed successfully!"
         }
         failure {
             echo "Pipeline failed. Check the logs for errors."

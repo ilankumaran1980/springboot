@@ -2,55 +2,56 @@ pipeline {
     agent any
 
     environment {
-        // Java and Maven paths
-        JAVA_HOME = "/usr/lib/jvm/java-11-openjdk-arm64"
-        MAVEN_HOME = "/usr/share/maven"
-        PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${env.PATH}"
+        // If DockerHub or private registry is needed in future
+        // DOCKER_REGISTRY = "your-private-registry.com"
+        IMAGE_NAME = "petclinic"
+        IMAGE_TAG = "latest"
     }
 
     stages {
-        stage("Maven Build & Test") {
+        stage('Checkout Code') {
             steps {
-                echo "Building the project with Maven..."
-                sh "mvn -B clean install"
-                junit "**/target/surefire-reports/*.xml"
+                git 'https://github.com/ilankumaran1980/springboot.git'
             }
         }
 
-        stage("Build Docker Image") {
+        stage('Build with Maven') {
             steps {
-                script {
-                    pom = readMavenPom file: "pom.xml"
-                    TAG = pom.version
-                    echo "Building Docker image with tag: ${TAG}"
-                    sh "docker build -t petclinic:${TAG} ."
-                }
+                sh "mvn clean install -DskipTests"  // Skip tests for faster iteration
             }
         }
 
-        stage("Deploy Docker Container") {
+        stage('Build Docker Image') {
             steps {
-                script {
-                    pom = readMavenPom file: "pom.xml"
-                    TAG = pom.version
-                    echo "Deploying Docker container on port 9090"
-                    sh """
-                        # Remove old container if exists
-                        docker rm -f petclinic || true
-                        # Run new container mapping port 9090 on host to 8080 in container
-                        docker run -d --name petclinic -p 9090:8080 petclinic:${TAG}
-                    """
-                }
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('Stop Existing Container') {
+            steps {
+                // Stop previous container if running
+                sh '''
+                if [ $(docker ps -q -f name=petclinic-container) ]; then
+                    docker stop petclinic-container
+                    docker rm petclinic-container
+                fi
+                '''
+            }
+        }
+
+        stage('Run Docker Container') {
+            steps {
+                sh "docker run -d --name petclinic-container -p 9090:9090 ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline completed successfully!"
+            echo "Petclinic app deployed successfully on port 9090!"
         }
         failure {
-            echo "Pipeline failed. Check the logs for errors."
+            echo "Deployment failed."
         }
     }
 }

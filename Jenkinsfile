@@ -20,14 +20,16 @@ pipeline {
         stage("Build Docker Image") {
             steps {
                 script {
-                    // Extract version from pom.xml without using readMavenPom
+                    // Extract version from pom.xml without readMavenPom
                     def TAG = sh(returnStdout: true, script: "grep -m1 '<version>' pom.xml | sed -e 's/.*<version>\\(.*\\)<\\/version>.*/\\1/'").trim()
                     echo "Building Docker image with tag: ${TAG}"
-                    // Ensure JAR exists before building Docker image
-                    def jarExists = fileExists "target/*.jar"
+
+                    // Check if any JAR exists in target using shell command
+                    def jarExists = sh(script: 'ls target/*.jar', returnStatus: true) == 0
                     if (!jarExists) {
                         error("Spring Boot JAR not found in target. Build failed or artifact missing.")
                     }
+
                     sh "docker build -t petclinic:${TAG} ."
                 }
             }

@@ -42,7 +42,7 @@ pipeline {
                     echo "Starting Docker container on port 9090"
                     sh """
                         docker rm -f petclinic || true
-                        docker run -d --name petclinic -p 9090:8080 petclinic:${TAG}
+                        docker run -d --name petclinic -p 9090:9090 petclinic:${TAG}
                     """
                 }
             }

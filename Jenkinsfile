@@ -2,18 +2,16 @@ pipeline {
     agent any
 
     environment {
-        // You can explicitly set JAVA_HOME and MAVEN_HOME if needed
+        // Java and Maven paths
         JAVA_HOME = "/usr/lib/jvm/java-11-openjdk-arm64"
-        PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
         MAVEN_HOME = "/usr/share/maven"
-        PATH = "${env.MAVEN_HOME}/bin:${env.PATH}"
+        PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${env.PATH}"
     }
 
     stages {
-
         stage("Maven Build & Test") {
             steps {
-                echo "Building project with Maven..."
+                echo "Building the project with Maven..."
                 sh "mvn -B clean install"
                 junit "**/target/surefire-reports/*.xml"
             }
@@ -24,7 +22,7 @@ pipeline {
                 script {
                     pom = readMavenPom file: "pom.xml"
                     TAG = pom.version
-                    echo "Building Docker image with tag: petclinic:${TAG}"
+                    echo "Building Docker image with tag: ${TAG}"
                     sh "docker build -t petclinic:${TAG} ."
                 }
             }
@@ -35,15 +33,16 @@ pipeline {
                 script {
                     pom = readMavenPom file: "pom.xml"
                     TAG = pom.version
-                    echo "Deploying Docker container on port 9090..."
+                    echo "Deploying Docker container on port 9090"
                     sh """
+                        # Remove old container if exists
                         docker rm -f petclinic || true
+                        # Run new container mapping port 9090 on host to 8080 in container
                         docker run -d --name petclinic -p 9090:8080 petclinic:${TAG}
                     """
                 }
             }
         }
-
     }
 
     post {
@@ -51,7 +50,7 @@ pipeline {
             echo "Pipeline completed successfully!"
         }
         failure {
-            echo "Pipeline failed."
+            echo "Pipeline failed. Check the logs for errors."
         }
     }
 }

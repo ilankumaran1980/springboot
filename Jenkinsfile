@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // Java and Maven paths
-        JAVA_HOME = "/usr/lib/jvm/java-11-openjdk-arm64"
+        JAVA_HOME = "/usr/lib/jvm/java-11-openjdk-amd64"
         MAVEN_HOME = "/usr/share/maven"
         PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${env.PATH}"
     }
